@@ -1,8 +1,7 @@
-from censusUtils import get_acs_variable_data, get_census_dict_by_dataset
-
-#
-#  MAIN
-#
+from censusUtils import *
+from acsData import acs1Data
+from censusData import *
+from dotenv import load_dotenv
 
 population_var = 'B01001_001E' #Population
 employment_var = 'B23001_001E' #employed?
@@ -24,8 +23,16 @@ label_dict = {
 
 census_dict = get_census_dict_by_dataset()
 
-
-
 year = '2005'
+dataset = 'acs/acs1'
+location = censusLoc.MSA.value
 variables = [population_var, employment_var, earnings_var, median_earnings_var, household_income_var, poverty_ratio_var]
-msa_pop_2005 = get_acs_variable_data(year, variables)
+
+acs_2005 = acs1Data(year=year, variables=variables, location=censusLoc.MSA.value)
+acs_2005.set_census_key_from_env()
+acs_2005.collect_dataframe()
+acs_2005_dict = acs_2005.get_dataframe().to_dict(orient='index')
+
+
+
+
