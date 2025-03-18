@@ -1,6 +1,12 @@
+import os
 import unittest
 import re
 import pandas as pd
+from census import Census
+import us  # Helps convert state names to abbreviations
+from dotenv import load_dotenv
+import geopandas as gpd
+import requests
 
 def dataset_html_to_str(html_str):
     dataset_str = html_str.replace('› ', '/')
@@ -46,7 +52,7 @@ def get_census_dict_by_dataset():
         if year not in new_dict[dataset]:
             new_dict[dataset][year] = {}
         for label in headers:
-            if re.match(label, 'url'):
+            if re.search('url', label):
                 new_dict[dataset][year][label] = get_list_url(census_dict[entry]['api_base_url'], census_dict[entry][label])
             else:
                 new_dict[dataset][year][label] = census_dict[entry][label]
@@ -54,7 +60,7 @@ def get_census_dict_by_dataset():
 
 def get_dataset_variables(variables_table_url):
     variables_table = pd.read_html(variables_table_url)
-    variables_dict = variables_table.to_dict(orient='index')
+    variables_dict = variables_table[0].to_dict(orient='index')
     return variables_dict
 def search_variables_by_field(dict, field_name, reg_ex):
     search_dict = {}
@@ -66,10 +72,11 @@ def search_variables_by_field(dict, field_name, reg_ex):
 def get_variable_totals(dict):
     search_dict = {}
     for entry in dict.keys():
-        if re.match('Estimate Total$', dict[entry]['Label']):
+        if re.match('Estimate!!Total$', dict[entry]['Label']):
             search_dict[entry] = dict[entry]
     return search_dict
-
+def search_variables_by_code(dict, name):
+    return search_variables_by_name(dict, name)
 def search_variables_by_name(dict, name):
     return search_variables_by_field(dict, 'Name', name)
 
@@ -81,6 +88,61 @@ def search_variables_by_concept(dict, concept_reg_ex):
 def print_dict_entry(entry):
     print(f"{entry['Name']}:\t\t{entry['Concept']}\n")
 
+def get_census_key_from_env(use_test_key=False):
+    if os.path.exists('.env'):
+        load_dotenv('.env')
+        if use_test_key:
+            census_key = os.getenv('TEST_KEY')
+        else:
+            census_key = os.getenv('CENSUS_KEY')
+        return census_key
+    else:
+        print(f"WARNING: Can't load file {self.env_file_path}")
+        return None
+
+def get_state_geoid(state_name):
+    """Get GEOID for a U.S. state."""
+    c = Census(get_census_key_from_env())
+    state_abbr = us.states.lookup(state_name).abbr
+    data = c.sf1.get(("NAME", "STATE"), {"for": "state:*"})
+    for entry in data:
+        if entry["NAME"] == state_name:
+            return entry["STATE"]
+    return None
+def get_geographies(address=None, geography_type=None):
+    """
+    Fetches geographical information for a given address, city, or state using the U.S. Census Geocoder API.
+    :param address: One line address, can be a full address or a single state or zip code.
+    :return: JSON with geographical information or an error message
+    """
+
+    base_url = "https://geocoding.geo.census.gov/geocoder/geographies/onelineaddress"
+    params = {
+        "benchmark": "Public_AR_Current",
+        "vintage": "Current_Current",
+        "layers": "10",  # FIPS codes and geography layers
+        "format": "json",
+        "address": address
+    }
+
+    response = requests.get(base_url, params=params)
+
+    if response.status_code == 200:
+        data = response.json()
+
+        # Check if results are available
+        try:
+            result = data['result']['addressMatches'][0]  # Get first match
+            return {
+                "matched_address": result.get("matchedAddress"),
+                "coordinates": result.get("coordinates"),
+                "geographies": result.get("geographies")
+            }
+        except (KeyError, IndexError):
+            return {"error": "No matching address found. Try refining your input."}
+    else:
+        return {"error": f"API request failed with status code {response.status_code}"}
+
 def print_entire_dict_or_table(dict):
     for entry in dict:
         print_dict_entry(dict[entry])
@@ -91,8 +153,13 @@ def string_to_url(string):
 class MyTestCase(unittest.TestCase):
 
     def test_something(self):
-        new_census_dict = get_census_dict_by_dataset()
+        census_dict = get_census_dict_by_dataset()
         self.assertEqual(True, True)  # add assertion here
+
+    def test_varaibles_url(self):
+        census_dict = get_census_dict_by_dataset()
+        self.assertEqual('http://api.census.gov/data/2005/acs/acs1/variables.html', census_dict['acs/acs1']['2005']['variables_url'])
+
 
 if __name__ == '__main__':
     unittest.main()

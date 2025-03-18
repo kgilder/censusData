@@ -83,5 +83,13 @@ class MyTestCase(unittest.TestCase):
         self.assertEqual('United States', pop_dict[0]['NAME'])
         self.assertEqual('288378137', pop_dict[0]['B01001_001E'])
 
+    def test_get_chicago_population(self):
+        chi_location = censusLoc.CITY.value
+        acs_2005 = acs1Data(year=self.year, variables=self.variables, location=us_location, census_key=self.census_key)
+        acs_2005.collect_dataframe()
+        pop_dict = acs_2005.get_dataframe().to_dict(orient='index')
+        self.assertEqual('United States', pop_dict[0]['NAME'])
+        self.assertEqual('288378137', pop_dict[0]['B01001_001E'])
+
 if __name__ == '__main__':
     unittest.main()

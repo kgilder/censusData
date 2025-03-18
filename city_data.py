@@ -2,6 +2,8 @@ from censusUtils import *
 from acsData import acs1Data
 from censusData import *
 from dotenv import load_dotenv
+from plotnine import ggplot, aes, geom_point
+
 
 population_var = 'B01001_001E' #Population
 employment_var = 'B23001_001E' #employed?
@@ -9,7 +11,7 @@ earnings_var = 'B19051_001E'
 median_earnings_var = 'B20004_001E'
 household_income_var = 'B19001_001E'
 wage_or_salary_var = 'B19052_001E'
-poverty_ratio_var = 'B17002_001E'
+poverty_ratio_var = 'B17002_001E' #Should be sum of 002E, 003E, 004E
 
 label_dict = {
     population_var: 'Population',
@@ -33,6 +35,7 @@ acs_2005.set_census_key_from_env()
 acs_2005.collect_dataframe()
 acs_2005_dict = acs_2005.get_dataframe().to_dict(orient='index')
 
-
+df = acs_2005.get_dataframe()
+ggplot(df) + aes(x=population_var, y=median_earnings_var) + geom_point()
 
 
