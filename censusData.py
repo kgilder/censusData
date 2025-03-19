@@ -33,98 +33,108 @@ class censusData():
     census_api_base = 'https://api.census.gov'
     year = ''
     variables = []
-    url_variables = ''
     geography = ''
-    url_geography = ''
     geography_in = ''
-    url_geography_in = ''
     census_key = ''
     env_file_path = '.env'
     dict = {}
     census_api_url = ''
     dataset = ''
+    params = {}
     json = {}
     df = pd.DataFrame()
 
-    def __init__(self, year='', dataset='', variables=[], geography='', geography_in='', use_test_key=False):
+    def __init__(self, year='', dataset='', variables=[], geography='', geography_in=''):
         self.census_api_base = 'https://api.census.gov'
-        self.year = year
-        self.dataset = dataset
-        self.set_variables(variables)
+        if year:
+            self.set_year(year)
+        if dataset:
+            self.set_dataset(dataset)
+        if variables:
+            self.set_variables(variables)
         if geography:
             self.set_geography(geography)
         if geography_in:
             self.set_geography_in(geography_in)
-        self.set_census_key(use_test_key=use_test_key)
+        self.set_census_key()
 
-    def print_info(self):
-        print(f"census_api_base: {self.census_api_base}")
-        print(f"year: {self.year}")
-        print(f"dataset: {self.dataset}")
-        print(f"variables: {self.variables}")
-        print(f"url_variables: {self.url_variables}")
-        print(f"geography: {self.geography}")
-        print(f"url_geography: {self.url_geography}")
-        print(f"env_file_path: {self.env_file_path}")
 
-    def get_census_api_base(self):
-        return self.census_api_base
+    def update_url(self):
+        self.census_api_url = f"{self.census_api_base}/data/{self.year}/{self.dataset}"
 
-    def set_env_file_path(self, env_file_path):
-        self.env_file_path = env_file_path
+    def set_year(self, year):
+        self.year = year
+        self.update_url()
+
+    def set_dataset(self, datasets):
+        self.dataset = datasets
+        self.update_url()
+
+    def get_url(self):
+        if not self.census_api_base:
+            print('Error: census_api_base not set')
+        if not self.year:
+            print('Error: year not set')
+        if not self.dataset:
+            print('Error: dataset not set')
+        return self.census_api_url
+
+    def get_params(self):
+        return self.params
+    def update_year(self, year):
+        self.year = year
+
+    def update_dataset(self, dataset):
+        self.dataset = dataset
+
     def get_census_key(self):
         return self.census_key
+
+    def update_variables(self):
+        self.params['get'] = ",".join(['NAME'] + self.variables)
+
     def set_variables(self, variables):
         self.variables = variables
-        self.url_variables  = ','.join(['NAME'] + variables)
+        self.update_variables()
 
-    def set_geography(self, geography, id=None):
-        self.geography = geography
-        if id:
-            self.url_geography = "&for=" + string_to_url(geography) + ":" + id
-        else:
-            self.url_geography = "&for=" + string_to_url(geography) + ":*"
+    def clear_variables(self):
+        self.variables = []
+        del self.params['get']
 
-    def set_geography_in(self, geography, id = None):
-        self.geography_in = expression
-        if id:
-            self.url_geography_in = "&in=" + geography + ":" + id
-        else:
-            self.url_geography_in = "&in=" + geography + ":*"
+    def add_variable(self, variable):
+        self.variables.append(variable)
+        self.update_variables()
 
-    def set_census_key(self, use_test_key=False):
-        key = get_census_key_from_env(use_test_key=use_test_key)
+    def set_geography(self, geography):
+            self.params['for'] = geography
+
+    def clear_geography(self):
+        del self.params['for']
+
+    def set_geography_in(self, geography):
+            self.params['in'] = geography
+
+    def clear_geography_in(self):
+        del self.params['in']
+
+    def set_census_key(self):
+        key = get_census_key_from_env(use_test_key=False)
         if not key:
             print("WARNING: No census api key provided.")
         else:
-            self.census_key = key
-    def get_url_geography(self):
-        return self.url_geography
-    def get_url_geography_re(self):
-        return self.url_geography_in
-    def get_url_variables(self):
-        return self.url_variables
+            self.params['key'] = key
 
-    def set_dataset(self, dataset):
-        self.dataset = dataset
+    def clear_census_key(self):
+        del self.params['key']
 
-    def get_dataset(self):
-        return self.dataset
-    def set_census_api_url(self):
-        self.census_api_url = f"{self.census_api_base}/data/{self.year}/{self.dataset}?get={self.url_variables}{self.url_geography}{self.url_geography_in}&key={self.census_key}"
-    def get_census_api_url(self):
-        return self.census_api_url
-    def get_variable_dataframe(self):
-        return 0
-
-    def get_api_url_response(self):
-        response = requests.get(self.census_api_url)
-        self.json = json.loads(response.text)
+    def get_api_response(self, url, params):
+        response = requests.get(url, params)
+        # self.json = json.loads(response.text)
+        return json.loads(response.text)
 
     def collect_dataframe(self):
         self.dict = {}
-        self.set_census_api_url()
-        self.get_api_url_response()
+        self.json = self.get_api_response(self.get_url(), self.get_params())
         header = self.json[0][:-1]
         for label in header:
             self.dict[label] = []
@@ -143,33 +153,6 @@ class MyTestCase(unittest.TestCase):
     geography = censusLoc.MSA.value
     load_dotenv(dotenv_path='.env')
     census_key = get_census_key_from_env()
-
-    def test_something(self):
-        self.assertEqual(True, True)  # add assertion here
-
-    def test_get_census_key(self):
-        acs_2005 = censusData(year=self.year, dataset=self.dataset, variables=self.variables, geography=self.geography, use_test_key=True)
-        self.assertEqual(acs_2005.get_census_key(), 'acedcafeacedcafe')
-
-    def test_url_geography(self):
-        acs_2005 = censusData(year=self.year, dataset=self.dataset, variables=self.variables, geography=self.geography)
-        self.assertEqual(acs_2005.get_url_geography(), "&for=metropolitan%20statistical%20area/micropolitan%20statistical%20area:*")
-
-    def test_url_city_geography(self):
-        acs_2005 = censusData(year=self.year, dataset=self.dataset, variables=self.variables, geography=censusLoc.CITY.value)
-        self.assertEqual(acs_2005.get_url_geography(),"&for=principal%20city%20(or%20part):*")
-
-    def test_url_variables(self):
-        acs_2005 = censusData(year=self.year, dataset=self.dataset, variables=self.variables, geography=self.geography)
-        self.assertEqual(acs_2005.get_url_variables(), "NAME,B01001_001E")
-
-    def test_set_url(self):
-        acs_2005 = censusData(year=self.year, dataset=self.dataset, variables=self.variables, geography=self.geography)
-        acs_2005.set_census_api_url()
-        url_variables = acs_2005.get_url_variables()
-        url_geography = acs_2005.get_url_geography()
-        census_api = acs_2005.get_census_api_base()
-        self.assertEqual(acs_2005.get_census_api_url(), f"{census_api}/data/{self.year}/{self.dataset}?get={url_variables}{url_geography}&key={self.census_key}")
 
     def test_get_us_population(self):
         us_geography = censusLoc.US.value
