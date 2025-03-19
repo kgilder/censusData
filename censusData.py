@@ -34,7 +34,7 @@ class censusData():
     year = ''
     variables = []
     geography = ''
-    geography_in = ''
+    higher_geography = ''
     census_key = ''
     env_file_path = '.env'
     dict = {}
@@ -44,7 +44,7 @@ class censusData():
     json = {}
     df = pd.DataFrame()
 
-    def __init__(self, year='', dataset='', variables=[], geography='', geography_in=''):
+    def __init__(self, year='', dataset='', variables=[], geography='', higher_geography=''):
         self.census_api_base = 'https://api.census.gov'
         if year:
             self.set_year(year)
@@ -54,8 +54,8 @@ class censusData():
             self.set_variables(variables)
         if geography:
             self.set_geography(geography)
-        if geography_in:
-            self.set_geography_in(geography_in)
+        if higher_geography:
+            self.set_higer_geography(higher_geography)
         self.set_census_key()
 
 
@@ -111,10 +111,10 @@ class censusData():
     def clear_geography(self):
         del self.params['for']
 
-    def set_geography_in(self, geography):
+    def set_higher_geography(self, geography):
             self.params['in'] = geography
 
-    def clear_geography_in(self):
+    def clear_higher_geography(self):
         del self.params['in']
 
     def set_census_key(self):
