@@ -1,6 +1,5 @@
 import unittest
 from enum import Enum
-from dotenv import load_dotenv
 from censusUtils import get_census_key_from_env
 from censusUtils import download_and_extract_tiger
 import requests
@@ -179,13 +178,18 @@ class MyTestCase(unittest.TestCase):
         # Define the TIGER/Line Shapefile URL (Cook County, IL Blocks - 2010)
         tiger_url = "https://www2.census.gov/geo/tiger/TIGER2010/TABBLOCK/2010/tl_2010_17031_tabblock10.zip"
         output_dir = "tiger_shapefiles"
-        zip_path = os.path.join(output_dir, "tl_2010_17031_tabblock10.zip")
+        zip_path = os.path.abspath(os.path.join(output_dir, "tl_2010_17031_tabblock10.zip"))
         os.makedirs(output_dir, exist_ok=True)
         download_and_extract_tiger(tiger_url, zip_path, output_dir)
-        shp_file = os.path.join(output_dir, "tl_2010_17031_tabblock10.shp")
+        shp_file = os.path.abspath(os.path.join(output_dir, "tl_2010_17031_tabblock10.shp"))
+        #pin fiona to version 1.9.6
         blocks_gdf = gpd.read_file(shp_file)
         print(blocks_gdf.head())
         blocks_gdf.plot(figsize=(10, 8), edgecolor="black")
+# import matplotlib.pyplot as plt
+# fig, ax = plt.subplots(figsize=(10, 8))
+# blocks_gdf.plot(ax=ax, edgecolor="black")
+# plt.show()
 
 if __name__ == '__main__':
     unittest.main()
