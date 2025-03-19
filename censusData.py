@@ -55,7 +55,7 @@ class censusData():
         if geography:
             self.set_geography(geography)
         if higher_geography:
-            self.set_higer_geography(higher_geography)
+            self.set_higher_geography(higher_geography)
         self.set_census_key()
 
 
@@ -162,15 +162,18 @@ class MyTestCase(unittest.TestCase):
         self.assertEqual('United States', pop_dict[0]['NAME'])
         self.assertEqual('288378137', pop_dict[0]['B01001_001E'])
 
-    # def test_get_cities_population(self):
-    #     city_geography = censusLoc.CITY.value
-    #     illinois_geos = get_geographies(state="Illinois")
-    #     acs_2005 = censusData(year=self.year, dataset=self.dataset, variables=self.variables, geography=city_geography)
-    #     acs_2005.collect_dataframe()
-    #     pop_dict = acs_2005.get_dataframe().to_dict(orient='index')
-    #     print(pop_dict[0]['NAME'])
-    #     #self.assertEqual('United States', pop_dict[0]['NAME'])
-    #     #self.assertEqual('288378137', pop_dict[0]['B01001_001E'])
+    def test_get_cities_population(self):
+        dec_2020 = censusData(year='2020',
+                              dataset='dec/sf1',
+                              variables=['P1_001N'],
+                              geography='block:*',
+                              higher_geography='place:14000'
+                              )
+        dec_2020.collect_dataframe()
+        pop_dict = dec_2020.get_dataframe().to_dict(orient='index')
+        print(pop_dict[0]['NAME'])
+        #self.assertEqual('United States', pop_dict[0]['NAME'])
+        #self.assertEqual('288378137', pop_dict[0]['B01001_001E'])
 
 if __name__ == '__main__':
     unittest.main()
