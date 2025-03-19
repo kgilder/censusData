@@ -91,7 +91,7 @@ class censusData():
         return self.census_key
 
     def update_variables(self):
-        self.params['get'] = ",".join(['NAME'] + self.variables)
+        self.params['get'] = ",".join(self.variables)
 
     def set_variables(self, variables):
         self.variables = variables
@@ -129,17 +129,19 @@ class censusData():
 
     def get_api_response(self, url, params):
         response = requests.get(url, params)
-        # self.json = json.loads(response.text)
-        return json.loads(response.text)
+        if response.status_code == 200:
+            self.json = response.json()
+        else:
+            print("ERROR: Received invalid response: " + str(response.status_code))
 
     def collect_dataframe(self):
         self.dict = {}
-        self.json = self.get_api_response(self.get_url(), self.get_params())
-        header = self.json[0][:-1]
+        self.get_api_response(self.get_url(), self.get_params())
+        header = self.json[0]
         for label in header:
             self.dict[label] = []
         for row in self.json[1:]:
-            for i in range(len(row[:-1])):
+            for i in range(len(row)):
                 self.dict[header[i]].append(row[i])
         self.df = pd.DataFrame(self.dict)
 
@@ -147,7 +149,7 @@ class censusData():
         return self.df
 
 class MyTestCase(unittest.TestCase):
-    variables = ['B01001_001E']
+    variables = ['NAME', 'B01001_001E']
     year = '2005'
     dataset = 'acs/acs1'
     geography = censusLoc.MSA.value
@@ -163,17 +165,16 @@ class MyTestCase(unittest.TestCase):
         self.assertEqual('288378137', pop_dict[0]['B01001_001E'])
 
     def test_get_cities_population(self):
-        dec_2020 = censusData(year='2020',
+        cd = censusData(year='2010',
                               dataset='dec/sf1',
-                              variables=['P1_001N'],
+                              variables=['NAME','P001001'],
                               geography='block:*',
-                              higher_geography='place:14000'
+                              higher_geography='state:17 county:031'
                               )
-        dec_2020.collect_dataframe()
-        pop_dict = dec_2020.get_dataframe().to_dict(orient='index')
-        print(pop_dict[0]['NAME'])
-        #self.assertEqual('United States', pop_dict[0]['NAME'])
-        #self.assertEqual('288378137', pop_dict[0]['B01001_001E'])
+        cd.collect_dataframe()
+        dict = cd.get_dataframe().to_dict(orient='index')
+        self.assertEqual('Block 1000, Block Group 1, Census Tract 101, Cook County, Illinois', dict[0]['NAME'])
+        self.assertEqual('128', dict[0]['P001001'])
 
 if __name__ == '__main__':
     unittest.main()
