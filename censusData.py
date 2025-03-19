@@ -1,15 +1,9 @@
 import unittest
 from enum import Enum
 from dotenv import load_dotenv
-import os
-import numpy as np
-from censusUtils import string_to_url
-from censusUtils import get_geographies
 from censusUtils import get_census_key_from_env
 import requests
-import json
 import pandas as pd
-from census import Census
 
 class censusApi(Enum):
     URL = 'https://api.census.gov'
@@ -149,16 +143,13 @@ class censusData():
         return self.df
 
 class MyTestCase(unittest.TestCase):
-    variables = ['NAME', 'B01001_001E']
-    year = '2005'
-    dataset = 'acs/acs1'
-    geography = censusLoc.MSA.value
-    load_dotenv(dotenv_path='.env')
-    census_key = get_census_key_from_env()
 
     def test_get_us_population(self):
         us_geography = censusLoc.US.value
-        acs_2005 = censusData(year=self.year, dataset=self.dataset, variables=self.variables, geography=us_geography)
+        acs_2005 = censusData(year='2005',
+                              dataset='acs/acs1',
+                              variables=['NAME','B01001_001E'],
+                              geography='us:1')
         acs_2005.collect_dataframe()
         pop_dict = acs_2005.get_dataframe().to_dict(orient='index')
         self.assertEqual('United States', pop_dict[0]['NAME'])
