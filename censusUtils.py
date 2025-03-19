@@ -1,6 +1,8 @@
 import os
 import unittest
 import re
+import zipfile
+
 import pandas as pd
 from census import Census
 import us  # Helps convert state names to abbreviations
@@ -160,6 +162,24 @@ class MyTestCase(unittest.TestCase):
         census_dict = get_census_dict_by_dataset()
         self.assertEqual('http://api.census.gov/data/2005/acs/acs1/variables.html', census_dict['acs/acs1']['2005']['variables_url'])
 
+def download_and_extract_tiger(url, save_path, extract_to):
+    """Downloads and extracts a TIGER/Line shapefile from the Census Bureau."""
+    if not os.path.exists(save_path):
+        print(f"Downloading {url}...")
+        response = requests.get(url, stream=True)
+        if response.status_code == 200:
+            with open(save_path, "wb") as file:
+                for chunk in response.iter_content(1024):
+                    file.write(chunk)
+            print("Download complete.")
+        else:
+            raise Exception(f"Failed to download: {response.status_code}")
+
+    # Extract the ZIP file
+    print("Extracting files...")
+    with zipfile.ZipFile(save_path, "r") as zip_ref:
+        zip_ref.extractall(extract_to)
+    print("Extraction complete.")
 
 if __name__ == '__main__':
     unittest.main()

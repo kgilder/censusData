@@ -2,8 +2,11 @@ import unittest
 from enum import Enum
 from dotenv import load_dotenv
 from censusUtils import get_census_key_from_env
+from censusUtils import download_and_extract_tiger
 import requests
 import pandas as pd
+import os
+import geopandas as gpd
 
 class censusApi(Enum):
     URL = 'https://api.census.gov'
@@ -35,7 +38,7 @@ class censusData():
     census_api_url = ''
     dataset = ''
     params = {}
-    json = {}
+    data = {}
     df = pd.DataFrame()
 
     def __init__(self, year='', dataset='', variables=[], geography='', higher_geography=''):
@@ -124,20 +127,15 @@ class censusData():
     def get_api_response(self, url, params):
         response = requests.get(url, params)
         if response.status_code == 200:
-            self.json = response.json()
+            return response.json()
         else:
             print("ERROR: Received invalid response: " + str(response.status_code))
 
     def collect_dataframe(self):
         self.dict = {}
-        self.get_api_response(self.get_url(), self.get_params())
-        header = self.json[0]
-        for label in header:
-            self.dict[label] = []
-        for row in self.json[1:]:
-            for i in range(len(row)):
-                self.dict[header[i]].append(row[i])
-        self.df = pd.DataFrame(self.dict)
+        data = self.get_api_response(self.get_url(), self.get_params())
+        self.data = data
+        self.df = pd.DataFrame(data[1:], columns=data[0])
 
     def get_dataframe(self):
         return self.df
@@ -166,6 +164,28 @@ class MyTestCase(unittest.TestCase):
         dict = cd.get_dataframe().to_dict(orient='index')
         self.assertEqual('Block 1000, Block Group 1, Census Tract 101, Cook County, Illinois', dict[0]['NAME'])
         self.assertEqual('128', dict[0]['P001001'])
+
+    def test_map_cities_population(self):
+        cd = censusData(year='2010',
+                              dataset='dec/sf1',
+                              variables=['NAME','P001001'],
+                              geography='block:*',
+                              higher_geography='state:17 county:031'
+                              )
+        cd.collect_dataframe()
+        df = cd.get_dataframe()
+        df['P001001'] = df['P001001'].astype(int)
+        print(df.head())
+        # Define the TIGER/Line Shapefile URL (Cook County, IL Blocks - 2010)
+        tiger_url = "https://www2.census.gov/geo/tiger/TIGER2010/TABBLOCK/2010/tl_2010_17031_tabblock10.zip"
+        output_dir = "tiger_shapefiles"
+        zip_path = os.path.join(output_dir, "tl_2010_17031_tabblock10.zip")
+        os.makedirs(output_dir, exist_ok=True)
+        download_and_extract_tiger(tiger_url, zip_path, output_dir)
+        shp_file = os.path.join(output_dir, "tl_2010_17031_tabblock10.shp")
+        blocks_gdf = gpd.read_file(shp_file)
+        print(blocks_gdf.head())
+        blocks_gdf.plot(figsize=(10, 8), edgecolor="black")
 
 if __name__ == '__main__':
     unittest.main()
