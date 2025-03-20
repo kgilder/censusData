@@ -63,44 +63,74 @@ def list_columns(dataset_id):
 
 #    # Example: Check columns in the Crime dataset
 #    list_columns("ijzp-q8t2")
-class ChicagoDataAPI:
+import requests
+import pandas as pd
+
+
+class ChicagoData:
     BASE_URL = "https://data.cityofchicago.org/resource"
 
-    def __init__(self, dataset_id=None, app_token=None):
+    def __init__(self, dataset_id, fields=None, filters=None, order_by=None, limit=1000, app_token=None):
         """
-        Initialize the API wrapper.
+        Initialize the API wrapper for the Chicago Data Portal.
 
-        :param dataset_id: The ID of the dataset (e.g., 'ijzp-q8t2' for crime data).
-        :param app_token: Optional Socrata app token (recommended for high-rate usage).
+        :param dataset_id: (str) Dataset ID from the Chicago Data Portal (e.g., '23tx-4h6r' for ward population)
+        :param fields: (list) Fields/columns to retrieve (default: None = all fields)
+        :param filters: (dict) Filtering conditions {column_name: value}
+        :param order_by: (str) Column to sort by
+        :param limit: (int) Number of results to fetch (default: 1000)
+        :param app_token: (str) Optional Socrata app token for higher request limits
         """
         self.dataset_id = dataset_id
+        self.fields = fields
+        self.filters = filters
+        self.order_by = order_by
+        self.limit = limit
         self.app_token = app_token
 
-    def get_data(self, limit=10, filters=None, order_by=None):
-        """
-        Fetch data from the dataset.
+    def get_url(self):
+        """Constructs the API URL."""
+        return f"{self.BASE_URL}/{self.dataset_id}.json"
 
-        :param limit: Number of records to retrieve.
-        :param filters: Dictionary of query filters (e.g., {"primary_type": "THEFT"}).
-        :param order_by: Column name to sort results by.
-        :return: List of records (JSON format).
-        """
-        url = f"{self.BASE_URL}/{self.dataset_id}.json"
-        params = {"$limit": limit}
+    def get_params(self):
+        """Generates query parameters."""
+        params = {}
 
-        if filters:
-            params.update(filters)
+        # Select specific fields
+        if self.fields:
+            params["$select"] = ", ".join(self.fields)
 
-        if order_by:
-            params["$order"] = order_by
+        # Apply filters
+        if self.filters:
+            for key, value in self.filters.items():
+                params[key] = value
 
-        headers = {}
+        # Sorting
+        if self.order_by:
+            params["$order"] = self.order_by
+
+        # Limit number of results
+        params["$limit"] = self.limit
+
+        # Add App Token if provided
         if self.app_token:
-            headers["X-App-Token"] = self.app_token
+            params["$$app_token"] = self.app_token
 
-        response = requests.get(url, params=params, headers=headers)
-        response.raise_for_status()  # Raise error for bad requests
-        return response.json()
+        return params
+
+    def get_data(self):
+        """Fetches data from the Chicago Data Portal API."""
+        url = self.get_url()
+        params = self.get_params()
+
+        response = requests.get(url, params=params)
+
+        if response.status_code == 200:
+            data = response.json()
+            return pd.DataFrame(data)  # Convert to DataFrame
+        else:
+            print(f"Error: {response.status_code} - {response.text}")
+            return None
 
 
 class MyTestCase(unittest.TestCase):
