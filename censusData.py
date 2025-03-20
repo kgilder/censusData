@@ -6,6 +6,8 @@ import requests
 import pandas as pd
 import os
 import geopandas as gpd
+import matplotlib.pyplot as plt
+
 
 class censusApi(Enum):
     URL = 'https://api.census.gov'
@@ -164,7 +166,7 @@ class MyTestCase(unittest.TestCase):
         self.assertEqual('Block 1000, Block Group 1, Census Tract 101, Cook County, Illinois', dict[0]['NAME'])
         self.assertEqual('128', dict[0]['P001001'])
 
-    def test_map_cities_population(self):
+    def test_map_block_population(self):
         cd = censusData(year='2010',
                               dataset='dec/sf1',
                               variables=['NAME','P001001'],
@@ -174,6 +176,8 @@ class MyTestCase(unittest.TestCase):
         cd.collect_dataframe()
         df = cd.get_dataframe()
         df['P001001'] = df['P001001'].astype(int)
+        df["GEOID10"] = df["state"].astype(str) + df["county"].astype(str) + df["tract"].astype(str) + df[
+            "block"].astype(str)
         print(df.head())
         # Define the TIGER/Line Shapefile URL (Cook County, IL Blocks - 2010)
         tiger_url = "https://www2.census.gov/geo/tiger/TIGER2010/TABBLOCK/2010/tl_2010_17031_tabblock10.zip"
@@ -185,11 +189,145 @@ class MyTestCase(unittest.TestCase):
         #pin fiona to version 1.9.6
         blocks_gdf = gpd.read_file(shp_file)
         print(blocks_gdf.head())
-        blocks_gdf.plot(figsize=(10, 8), edgecolor="black")
-# import matplotlib.pyplot as plt
-# fig, ax = plt.subplots(figsize=(10, 8))
-# blocks_gdf.plot(ax=ax, edgecolor="black")
-# plt.show()
+        merged_df = pd.merge(df, blocks_gdf, on='GEOID10')
+        merged_df = gpd.GeoDataFrame(merged_df, geometry="geometry")
+        print(merged_df.head())
+        fig, ax = plt.subplots(figsize=(12, 10))  # Increase figure size
+        merged_df.plot(column="P001001",
+                       scheme="QUANTILES",
+                       k=8,
+                       cmap="BuPu",
+                       legend=True,
+                       legend_kwds={"loc": "upper left", "bbox_to_anchor": (1, 1)},  # Adjust position
+                       ax=ax)
+        # Add title
+        ax.set_title("Population by Census Block in Chicago (2010)", fontsize=14)
+        # Remove axes for cleaner visualization
+        plt.axis("off")
+        # Ensure the entire plot (including the legend) is saved properly
+        plt.tight_layout()  # Adjust layout to prevent legend cutoff
+        plt.show()
+
+    def test_map_block_group_population(self):
+        cd = censusData(year='2010',
+                              dataset='dec/sf1',
+                              variables=['NAME','P001001'],
+                              geography='block group:*',
+                              higher_geography='state:17 county:031'
+                              )
+        cd.collect_dataframe()
+        df = cd.get_dataframe()
+        df['P001001'] = df['P001001'].astype(int)
+        df["GEOID10"] = df["state"].astype(str) + df["county"].astype(str) + df["tract"].astype(str) + df["block group"].astype(str)
+        print(df.head())
+        # Define the TIGER/Line Shapefile URL (Cook County, IL Blocks - 2010)
+        tiger_url = "https://www2.census.gov/geo/tiger/TIGER2010/BG/2010/tl_2010_17031_bg10.zip"
+        output_dir = "tiger_shapefiles_bg"
+        zip_path = os.path.abspath(os.path.join(output_dir, "tl_2010_17031_bg10.zip"))
+        os.makedirs(output_dir, exist_ok=True)
+        download_and_extract_tiger(tiger_url, zip_path, output_dir)
+        shp_file = os.path.abspath(os.path.join(output_dir, "tl_2010_17031_bg10.shp"))
+        #pin fiona to version 1.9.6
+        blocks_gdf = gpd.read_file(shp_file)
+        print(blocks_gdf.head())
+        merged_df = pd.merge(df, blocks_gdf, on='GEOID10')
+        merged_df = gpd.GeoDataFrame(merged_df, geometry="geometry")
+        print(merged_df.head())
+        fig, ax = plt.subplots(figsize=(12, 10))  # Increase figure size
+        merged_df.plot(column="P001001",
+                       scheme="QUANTILES",
+                       k=4,
+                       cmap="BuPu",
+                       legend=True,
+                       legend_kwds={"loc": "upper left", "bbox_to_anchor": (1, 1)},  # Adjust position
+                       ax=ax)
+        # Add title
+        ax.set_title("Population by Census Block in Chicago (2010)", fontsize=14)
+        # Remove axes for cleaner visualization
+        plt.axis("off")
+        # Ensure the entire plot (including the legend) is saved properly
+        plt.tight_layout()  # Adjust layout to prevent legend cutoff
+        plt.show()
+
+    def test_map_census_tract_population(self):
+        cd = censusData(year='2010',
+                              dataset='dec/sf1',
+                              variables=['NAME','P001001'],
+                              geography='tract:*',
+                              higher_geography='state:17 county:031'
+                              )
+        cd.collect_dataframe()
+        df = cd.get_dataframe()
+        df['P001001'] = df['P001001'].astype(int)
+        df["GEOID10"] = df["state"].astype(str) + df["county"].astype(str) + df["tract"].astype(str)
+        print(df.head())
+        # Define the TIGER/Line Shapefile URL (Cook County, IL Blocks - 2010)
+        tiger_url = "https://www2.census.gov/geo/tiger/TIGER2010/TRACT/2010/tl_2010_17031_tract10.zip"
+        output_dir = "tiger_shapefiles_bg"
+        zip_path = os.path.abspath(os.path.join(output_dir, "tl_2010_17031_tract10.zip"))
+        os.makedirs(output_dir, exist_ok=True)
+        download_and_extract_tiger(tiger_url, zip_path, output_dir)
+        shp_file = os.path.abspath(os.path.join(output_dir, "tl_2010_17031_tract10.shp"))
+        #pin fiona to version 1.9.6
+        blocks_gdf = gpd.read_file(shp_file)
+        print(blocks_gdf.head())
+        merged_df = pd.merge(df, blocks_gdf, on='GEOID10')
+        merged_df = gpd.GeoDataFrame(merged_df, geometry="geometry")
+        print(merged_df.head())
+        fig, ax = plt.subplots(figsize=(12, 10))  # Increase figure size
+        merged_df.plot(column="P001001",
+                       scheme="QUANTILES",
+                       k=4,
+                       cmap="BuPu",
+                       legend=True,
+                       legend_kwds={"loc": "upper left", "bbox_to_anchor": (1, 1)},  # Adjust position
+                       ax=ax)
+        # Add title
+        ax.set_title("Population by Census Block in Chicago (2010)", fontsize=14)
+        # Remove axes for cleaner visualization
+        plt.axis("off")
+        # Ensure the entire plot (including the legend) is saved properly
+        plt.tight_layout()  # Adjust layout to prevent legend cutoff
+        plt.show()
+
+    @unittest.skip("Skipping this test for now")
+    def test_map_ward_population(self):
+        # URL for Ward Population CSV
+        ward_population_url = "https://data.cityofchicago.org/api/views/23tx-4h6r/rows.csv?accessType=DOWNLOAD"
+        # Read data into Pandas
+        wards_df = pd.read_csv(ward_population_url)
+        # Rename columns for easier merging
+        wards_df = wards_df.rename(columns={"Ward": "ward", "Total": "population"})
+        # Convert ward to string (for merging)
+        wards_df["ward"] = wards_df["ward"].astype(str)
+        print(wards_df.head())
+        # URL for Chicago Wards Shapefile (GeoJSON format)
+        wards_shapefile_url = "https://data.cityofchicago.org/resource/rvih-nhyn.geojson"
+        # Read Ward Boundaries into GeoPandas
+        wards_gdf = gpd.read_file(wards_shapefile_url)
+        # Convert ward number to string for merging
+        wards_gdf["ward"] = wards_gdf["ward"].astype(str)
+        print(wards_gdf.head())
+        # Merge Ward Boundaries with Population Data
+        merged_gdf = wards_gdf.merge(wards_df, on="ward", how="left")
+        # Fill missing population values with 0 (if any)
+        merged_gdf["population"] = merged_gdf["population"].fillna(0).astype(int)
+        # Create Figure
+        fig, ax = plt.subplots(figsize=(12, 10))
+        # Plot the wards with population data
+        merged_gdf.plot(column="population",
+                        cmap="OrRd",  # Color scheme
+                        edgecolor="black",
+                        linewidth=0.5,
+                        legend=True,
+                        legend_kwds={"shrink": 0.6, "label": "Population"},
+                        ax=ax)
+        # Add Title
+        ax.set_title("Chicago Ward Population (2020 Census)", fontsize=14)
+        # Remove Axis for Clean View
+        plt.axis("off")
+        # Show Map
+        plt.show()
 
 if __name__ == '__main__':
     unittest.main()

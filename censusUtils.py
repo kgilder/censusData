@@ -148,9 +148,6 @@ def get_geographies(address=None, geography_type=None):
 def print_entire_dict_or_table(dict):
     for entry in dict:
         print_dict_entry(dict[entry])
-def string_to_url(string):
-    url_string = string.replace(" ", "%20")
-    return url_string
 
 class MyTestCase(unittest.TestCase):
 
