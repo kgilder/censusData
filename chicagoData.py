@@ -1,6 +1,8 @@
 
 import requests
 import unittest
+import geopandas as gpd
+import matplotlib.pyplot as plt
 
 def list_datasets(limit=None):
     """Fetch a list of available datasets from the Chicago Data Portal."""
@@ -67,7 +69,7 @@ import requests
 import pandas as pd
 
 
-class ChicagoData:
+class chicagoData:
     BASE_URL = "https://data.cityofchicago.org/resource"
 
     def __init__(self, dataset_id, fields=None, filters=None, order_by=None, limit=1000, app_token=None):
@@ -140,16 +142,47 @@ class MyTestCase(unittest.TestCase):
 
     def test_something(self):
         self.assertEqual(True, True)  # add assertion here
-    def test_url_location(self):
-        pass
+    def test_ward_population(self):
+        # Ward Population Dataset ID from the portal
+        dataset_id = "k5pk-wpt9"
 
-    def test_url_variables(self):
-        pass
+        # Create API instance
+        wards_api = chicagoData(
+            dataset_id=dataset_id,
+            fields=["acs_year", "ward", "total_population"],  # Select fields
+            order_by="Ward",  # Order by ward number
+            limit=50  # Fetch all wards
+        )
+        # Fetch data
+        wards_df = wards_api.get_data()
+        print(wards_df.head())
+        # Load Chicago ward boundaries (GeoJSON format)
+        wards_gdf = gpd.read_file("https://data.cityofchicago.org/resource/p293-wvbd.geojson")
+        # Ensure ward numbers are stored as strings for merging
+        wards_gdf["ward"] = wards_gdf["ward"].astype(str)
+        # Print to verify structure
+        print(wards_gdf.head())
+        # Create the figure and axis
+        fig, ax = plt.subplots(figsize=(12, 10))
 
-    def test_set_url(self):
-        pass
-    def test_get_population(self):
-        pass
+        # Plot the merged GeoDataFrame
+        merged_gdf.plot(column="total_population",
+                        cmap="OrRd",  # Color scale (Red-Orange)
+                        edgecolor="black",
+                        linewidth=0.5,
+                        legend=True,
+                        legend_kwds={"shrink": 0.6, "label": "Population"},
+                        ax=ax)
+
+        # Add title
+        ax.set_title("Population by Ward in Chicago", fontsize=14)
+
+        # Remove axis for cleaner visualization
+        plt.axis("off")
+
+        # Show the map
+        plt.show()
+
 # Example usage
 if __name__ == "__main__":
     unittest.main()
